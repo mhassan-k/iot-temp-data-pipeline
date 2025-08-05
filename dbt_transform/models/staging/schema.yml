@@ -1,0 +1,99 @@
+version: 2
+
+sources:
+  - name: dlt_raw
+    description: "Raw data ingested by DLT pipeline from Kaggle IoT dataset"
+    schema: dlt_raw
+    tables:
+      - name: raw_temperature_readings
+        description: "Raw IoT temperature sensor readings from Kaggle dataset (transformed by DLT)"
+        columns:
+          - name: id
+            description: "Original device/record identifier from Kaggle data"
+          - name: room_id_id
+            description: "Room identifier from Kaggle data (room_id/id column)"
+          - name: noted_date
+            description: "Reading timestamp from Kaggle data"
+          - name: temp
+            description: "Temperature reading from Kaggle data"
+          - name: out_in
+            description: "Environment type indicator (In/Out) from Kaggle data"
+          - name: _dlt_load_id
+            description: "DLT load identifier"
+          - name: _dlt_id
+            description: "DLT record identifier"
+
+models:
+  - name: stg_raw_temperature_readings
+    description: "Cleaned and standardized temperature readings from Kaggle IoT dataset"
+    columns:
+      - name: record_id
+        description: "Unique record identifier from DLT"
+        tests:
+          - not_null
+          - unique
+      
+      - name: device_id
+        description: "Cleaned device identifier from original 'id' column"
+        tests:
+          - not_null
+      
+      - name: reading_timestamp
+        description: "Parsed timestamp from 'noted_date' column"
+        tests:
+          - not_null
+      
+      - name: temperature_celsius
+        description: "Temperature in Celsius from 'temp' column"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: -50
+              max_value: 100
+      
+      - name: location
+        description: "Room/location from 'room_id/id' column"
+        tests:
+          - not_null
+      
+      - name: environment_type
+        description: "Environment type (Indoor/Outdoor/Unknown) from 'out/in' column"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Indoor', 'Outdoor', 'Unknown']
+      
+      - name: is_valid_record
+        description: "Flag indicating if record passes basic validation"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [true, false]
+      
+      - name: data_quality_score
+        description: "Data quality score (0.0 to 1.0) based on available fields"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0.0
+              max_value: 1.0
+
+# Additional tests for data quality
+tests:
+  - name: test_environment_type_consistency
+    description: "Ensure environment types are consistently categorized"
+    sql: |
+      select count(*)
+      from {{ ref('stg_raw_temperature_readings') }}
+      where environment_type not in ('Indoor', 'Outdoor', 'Unknown')
+    config:
+      severity: error
+      
+  - name: test_device_id_format
+    description: "Ensure device IDs are properly cleaned"
+    sql: |
+      select count(*)
+      from {{ ref('stg_raw_temperature_readings') }}
+      where device_id is null or trim(device_id) = ''
+    config:
+      severity: error

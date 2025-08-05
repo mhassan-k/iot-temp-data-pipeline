@@ -1,0 +1,154 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: iot_postgres
+    environment:
+      POSTGRES_DB: iot_temperature_db
+      POSTGRES_USER: iot_user
+      POSTGRES_PASSWORD: iot_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d
+    networks:
+      - iot_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iot_user -d iot_temperature_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Airflow Webserver
+  airflow_webserver:
+    image: apache/airflow:2.10.4
+    container_name: iot_airflow_webserver
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://iot_user:iot_password@postgres/iot_temperature_db
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth'
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'true'
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: 300
+      
+      # Database Configuration for tasks
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: iot_temperature_db
+      DB_USER: iot_user
+      DB_PASSWORD: iot_password
+      
+      # DLT Configuration
+      DLT_POSTGRES_HOST: postgres
+      DLT_POSTGRES_PORT: 5432
+      DLT_POSTGRES_USERNAME: iot_user
+      DLT_POSTGRES_PASSWORD: iot_password
+      DLT_POSTGRES_DATABASE: iot_temperature_db
+      
+      # DLT Standard Environment Variables
+      DESTINATION__POSTGRES__CREDENTIALS__HOST: postgres
+      DESTINATION__POSTGRES__CREDENTIALS__PORT: 5432
+      DESTINATION__POSTGRES__CREDENTIALS__USERNAME: iot_user
+      DESTINATION__POSTGRES__CREDENTIALS__PASSWORD: iot_password
+      DESTINATION__POSTGRES__CREDENTIALS__DATABASE: iot_temperature_db
+      
+      # dbt Configuration
+      DBT_PROFILES_DIR: /opt/airflow/dbt_transform/profiles
+      DBT_TARGET: prod
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./logs:/opt/airflow/logs
+      - ./landing_zone:/opt/airflow/landing_zone
+      - ./dbt_transform:/opt/airflow/dbt_transform
+      - ./dlt_ingest:/opt/airflow/dlt_ingest
+      - ./dbt_transform/profiles:/opt/airflow/dbt_transform/profiles
+    ports:
+      - "8080:8080"
+    networks:
+      - iot_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    command: >
+      bash -c "pip install --no-cache-dir astronomer-cosmos &&
+               pip install --no-cache-dir dlt[postgres] &&
+               pip install --no-cache-dir dbt-core dbt-postgres &&
+               pip install --no-cache-dir pandas==2.1.4 numpy pydantic loguru &&
+               pip install --no-cache-dir kagglehub &&
+               airflow db migrate &&
+               airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin || true &&
+               airflow connections create-default-connections &&
+               airflow webserver"
+
+  # Airflow Scheduler
+  airflow_scheduler:
+    image: apache/airflow:2.10.4
+    container_name: iot_airflow_scheduler
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://iot_user:iot_password@postgres/iot_temperature_db
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: 300
+      
+      # Database Configuration for tasks
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: iot_temperature_db
+      DB_USER: iot_user
+      DB_PASSWORD: iot_password
+      
+      # DLT Configuration
+      DLT_POSTGRES_HOST: postgres
+      DLT_POSTGRES_PORT: 5432
+      DLT_POSTGRES_USERNAME: iot_user
+      DLT_POSTGRES_PASSWORD: iot_password
+      DLT_POSTGRES_DATABASE: iot_temperature_db
+      
+      # DLT Standard Environment Variables
+      DESTINATION__POSTGRES__CREDENTIALS__HOST: postgres
+      DESTINATION__POSTGRES__CREDENTIALS__PORT: 5432
+      DESTINATION__POSTGRES__CREDENTIALS__USERNAME: iot_user
+      DESTINATION__POSTGRES__CREDENTIALS__PASSWORD: iot_password
+      DESTINATION__POSTGRES__CREDENTIALS__DATABASE: iot_temperature_db
+      
+      # dbt Configuration
+      DBT_PROFILES_DIR: /opt/airflow/dbt_transform/profiles
+      DBT_TARGET: prod
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./logs:/opt/airflow/logs
+      - ./landing_zone:/opt/airflow/landing_zone
+      - ./dbt_transform:/opt/airflow/dbt_transform
+      - ./dlt_ingest:/opt/airflow/dlt_ingest
+      - ./dbt_transform/profiles:/opt/airflow/dbt_transform/profiles
+    networks:
+      - iot_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow_webserver:
+        condition: service_started
+    restart: unless-stopped
+    command: >
+      bash -c "pip install --no-cache-dir astronomer-cosmos &&
+               pip install --no-cache-dir dlt[postgres] &&
+               pip install --no-cache-dir dbt-core dbt-postgres &&
+               pip install --no-cache-dir pandas==2.1.4 numpy pydantic loguru &&
+               pip install --no-cache-dir kagglehub &&
+               airflow scheduler"
+
+networks:
+  iot_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  pipeline_data:

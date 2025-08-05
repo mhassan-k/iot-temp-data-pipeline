@@ -1,0 +1,24 @@
+[sources.iot_temperature_source]
+landing_zone_path = "./landing_zone"
+
+[destination.postgres]
+dataset_name = "dlt_raw"
+
+[destination.postgres.credentials]
+host = "localhost"  # Will be overridden by environment variables in Docker
+port = 5432
+username = "iot_user"
+password = "iot_password"
+database = "iot_temperature_db"
+search_path = "public,dlt_raw"
+
+[pipeline.iot_temperature_ingestion]
+dev_mode = false
+progress = "log"
+
+[extract.data_writer]
+buffer_max_items = 1000
+file_max_items = 5000
+
+[normalize]
+max_table_nesting = 2

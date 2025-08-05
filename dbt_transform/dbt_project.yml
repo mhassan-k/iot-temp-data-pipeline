@@ -1,0 +1,38 @@
+name: 'iot_temperature_transform'
+version: '1.0.0'
+config-version: 2
+
+profile: 'iot_temperature'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  iot_temperature_transform:
+    staging:
+      +materialized: view
+      +schema: staging
+
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+
+    marts:
+      +materialized: table
+      +schema: marts
+
+vars:
+  # Temperature validation (only field available in Kaggle data)
+  min_temperature: -50
+  max_temperature: 100
+  
+  # Anomaly detection threshold
+  anomaly_threshold_multiplier: 3

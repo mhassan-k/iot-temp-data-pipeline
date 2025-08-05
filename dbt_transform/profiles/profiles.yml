@@ -1,0 +1,27 @@
+iot_temperature:
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DB_HOST', 'localhost') }}"
+      user: "{{ env_var('DB_USER', 'iot_user') }}"
+      password: "{{ env_var('DB_PASSWORD', 'iot_password') }}"
+      port: "{{ env_var('DB_PORT', 5432) | int }}"
+      database: "{{ env_var('DB_NAME', 'iot_temperature_db') }}"
+      schema: dbt_staging
+      threads: 4
+      keepalives_idle: 0
+      search_path: "public,dbt_staging,dbt_intermediate,dbt_marts"
+    
+    prod:
+      type: postgres
+      host: "{{ env_var('DB_HOST', 'postgres') }}"
+      user: "{{ env_var('DB_USER', 'iot_user') }}"
+      password: "{{ env_var('DB_PASSWORD', 'iot_password') }}"
+      port: "{{ env_var('DB_PORT', 5432) | int }}"
+      database: "{{ env_var('DB_NAME', 'iot_temperature_db') }}"
+      schema: dbt_staging
+      threads: 8
+      keepalives_idle: 0
+      search_path: "public,dbt_staging,dbt_intermediate,dbt_marts"
+  
+  target: "{{ env_var('DBT_TARGET', 'dev') }}"
