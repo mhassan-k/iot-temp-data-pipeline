@@ -12,9 +12,7 @@ This pipeline implements a modern ELT (Extract, Load, Transform) architecture th
 - 📥 **dlt (Data Load Tool)** - Schema-aware data ingestion with automatic type inference and lineage tracking
 - 🔄 **dbt (Data Build Tool)** - SQL-based transformations with built-in testing, documentation, and lineage
 - 🌌 **Astronomer Cosmos** - Native dbt integration providing task-level orchestration in Airflow
-- 📅 **Apache Airflow 2.10** - Workflow orchestration with enterprise-grade scheduling and monitoring
-- 🛡️ **Data Quality Framework** - Multi-layer validation with automated quality scoring
-- 🚨 **Statistical Anomaly Detection** - Z-score based outlier identification and flagging
+- 📅 **Apache Airflow** - Workflow orchestration with enterprise-grade scheduling and monitoring
 
 ## Data Flow Architecture
 
@@ -59,7 +57,7 @@ The pipeline follows a structured ELT workflow with the following stages:
 
 #### 1. Repository Setup
 ```bash
-git clone <repository-url>
+git clone git@github.com:mhassan-k/iot-temp-data-pipeline.git
 cd iot-temp-data-pipeline
 ```
 
@@ -131,32 +129,6 @@ ORDER BY anomaly_count DESC;
 - **Database**: `iot_temperature_db`  
 - **Username**: `iot_user`
 - **Password**: `iot_password`
-
-
-## Data Schema Requirements
-
-### Input Data Format
-
-The pipeline accepts CSV files with the following schema:
-
-```csv
-device_id,timestamp,temperature,humidity,battery_level,signal_strength,location,device_type,firmware_version
-IOT_TEMP_001,2024-01-01 12:00:00,23.5,45.2,85.3,-45.2,office,DHT22,v1.2.3
-```
-
-### Required Fields
-- `device_id`: Unique identifier for the IoT device
-- `timestamp`: Reading timestamp (YYYY-MM-DD HH:MM:SS)
-- `temperature`: Temperature reading in Celsius
-
-### Optional Fields
-- `humidity`: Humidity percentage (0-100)
-- `battery_level`: Battery level percentage (0-100)
-- `signal_strength`: Signal strength in dBm
-- `location`: Device location
-- `device_type`: Type of sensor
-- `firmware_version`: Device firmware version
-
 
 ## Data Quality and Validation
 
